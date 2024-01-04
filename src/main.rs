@@ -19,6 +19,7 @@ struct Stone;
 struct Ore {
     x: f32,
     y: f32,
+    timer: Timer,
 }
 
 fn main() {
@@ -27,6 +28,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, stone_setup)
         .add_systems(Update, ore_movment)
+        .add_systems(Update, ore_lifetime)
         .run();
 }
 
@@ -90,11 +92,12 @@ fn stone_setup(
                     })
                     .insert(Ore {
                         x: {
-                            transform.translation.x + f32::sin(d) * rng.gen_range(60..120) as f32
+                            transform.translation.x + f32::sin(d) * rng.gen_range(60..150) as f32
                         },
                         y: {
-                            transform.translation.y + f32::cos(d) * rng.gen_range(60..120) as f32
+                            transform.translation.y + f32::cos(d) * rng.gen_range(60..150) as f32
                         },
+                        timer: Timer::from_seconds(2., TimerMode::Once),
                     });
             }
         }
@@ -108,5 +111,18 @@ fn ore_movment(mut q: Query<(&mut Transform, &Ore), With<Ore>>) {
     for (mut transform, ore) in q.iter_mut() {
         let pos: Vec3 = transform.translation;
         transform.translation += (Vec3::new(ore.x, ore.y, 0.) - pos) / 5.;
+    }
+}
+
+fn ore_lifetime(
+    mut commands: Commands,
+    mut q: Query<(Entity, &mut Ore), With<Ore>>,
+    time: Res<Time>,
+) {
+    for (entity, mut ore) in q.iter_mut() {
+        ore.timer.tick(time.delta());
+        if ore.timer.finished() {
+            commands.entity(entity).despawn();
+        }
     }
 }
